@@ -1,0 +1,1255 @@
+
+
+
+<!DOCTYPE html>
+
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600<meta name="viewport"family=DM+Mono:wght@400;500<meta name="viewport"family=Syne:wght@700;800<meta name="viewport"display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>A2C — Implantation</title>
+
+<style>
+  :root {
+    --violet: #7B2D8B;
+    --violet-d: #5a1f68;
+    --violet-l: #f0e4f5;
+    --orange: #C05000;
+    --orange-l: #fdf0e8;
+    --yellow: #FFE066;
+    --yellow-l: #FFFBEA;
+    --blue: #2E75B6;
+    --blue-cal: #deeaf1;
+    --blue-usg: #ebf3fb;
+    --gold: #C8A951;
+    --bg: #F4F0F6;
+    --white: #FFFFFF;
+    --dark: #1A1A1A;
+    --grey: #888;
+    --border: #D0C0D8;
+    --radius: 14px;
+    --shadow: 0 4px 20px rgba(123,45,139,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--dark);
+    min-height: 100vh;
+    padding-bottom: 100px;
+  }
+
+  /* ── Header ── */
+  .app-header {
+    background: var(--violet);
+    padding: 20px 18px 16px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  }
+  .app-header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 800;
+    color: #fff; letter-spacing: -0.5px;
+  }
+  .app-header p {
+    font-size: 11px; color: rgba(255,255,255,0.65);
+    margin-top: 2px; font-family: 'DM Mono', monospace;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+
+  /* ── Tab selector ── */
+  .tab-bar {
+    display: flex; overflow-x: auto; gap: 6px;
+    padding: 14px 16px 10px;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 600;
+    color: var(--violet);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .tab-btn.active {
+    background: var(--violet);
+    border-color: var(--violet);
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(123,45,139,0.3);
+  }
+
+  /* ── Content ── */
+  .content { padding: 8px 14px; }
+
+  /* ── Section card ── */
+  .section-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(123,45,139,0.08);
+  }
+  .section-title {
+    background: var(--violet);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 700;
+    padding: 10px 14px;
+    letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .badge {
+    background: rgba(255,255,255,0.2);
+    border-radius: 8px; padding: 2px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px; font-weight: 500;
+  }
+
+  /* ── Platine / Options checklist ── */
+  .options-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; padding: 12px;
+  }
+  .opt-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--violet-l);
+    border-radius: 10px; padding: 10px 12px;
+    cursor: pointer; border: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .opt-item input[type=checkbox] { display: none; }
+  .opt-item .checkmark {
+    width: 18px; height: 18px; border-radius: 5px;
+    border: 2px solid var(--violet);
+    background: #fff; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .opt-item.checked {
+    border-color: var(--violet);
+    background: #e0c8f0;
+  }
+  .opt-item.checked .checkmark {
+    background: var(--violet);
+    border-color: var(--violet);
+  }
+  .opt-item.checked .checkmark::after {
+    content: '✓'; color: #fff; font-size: 11px; font-weight: 700;
+  }
+  .opt-label { font-size: 12px; font-weight: 500; line-height: 1.2; }
+
+  /* ── INTER DIFF block ── */
+  .interdiff-block {
+    margin: 0 12px 12px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--blue);
+    transition: border-color 0.2s;
+  }
+  .interdiff-block.type-a { border-color: var(--orange); }
+
+  .interdiff-header {
+    display: flex; align-items: center;
+    background: #AAAAAA; gap: 10px;
+    padding: 10px 14px;
+    transition: background 0.25s;
+  }
+  .interdiff-block { border-color: #CCCCCC; transition: border-color 0.25s; }
+  .interdiff-block.type-ac .interdiff-header { background: var(--blue); }
+  .interdiff-block.type-ac { border-color: var(--blue); }
+  .interdiff-block.type-a .interdiff-header { background: var(--orange); }
+  .interdiff-block.type-a { border-color: var(--orange); }
+
+  .interdiff-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px; font-weight: 700;
+    color: #fff; letter-spacing: 0.3px;
+  }
+
+  .interdiff-select {
+    margin-left: auto;
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 8px; padding: 6px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px; font-weight: 500; color: #fff;
+    cursor: pointer; outline: none;
+    min-width: 100px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='white'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px;
+  }
+  .interdiff-select option { background: var(--dark); color: #fff; }
+
+  /* ── Départs grid ── */
+  .departs-grid {
+    display: grid; gap: 6px; padding: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    background: #fafafa;
+  }
+
+  .depart-cell {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .depart-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px; color: var(--grey);
+    text-align: center;
+  }
+  .depart-calibre {
+    border-radius: 8px; padding: 0;
+    border: 2px solid var(--blue-cal);
+    background: var(--blue-cal);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px; font-weight: 500;
+    color: var(--dark); text-align: center;
+    cursor: pointer; outline: none;
+    height: 40px; width: 100%;
+    -webkit-appearance: none; appearance: none;
+    transition: all 0.15s;
+  }
+  .depart-calibre.filled {
+    background: var(--yellow);
+    border-color: #d4a800;
+    color: var(--dark);
+  }
+  .depart-calibre option { background: #fff; }
+
+  .depart-usage {
+    border-radius: 8px; padding: 4px 6px;
+    border: 1px solid #d0dde8;
+    background: var(--blue-usg);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px; color: var(--dark);
+    text-align: center; width: 100%;
+    min-height: 32px; resize: none;
+    outline: none;
+    transition: all 0.15s;
+  }
+  .depart-usage.filled {
+    background: var(--yellow-l);
+    border-color: #d4a800;
+  }
+
+  /* Cases pré-remplies modifiées */
+  .depart-calibre.modified {
+    background: var(--yellow);
+    border-color: #d4a800;
+  }
+
+  /* ── Séparateur ── */
+  .sep { height: 2px; background: #eee; margin: 0 12px 12px; border-radius: 2px; }
+
+  /* ── Infos chantier ── */
+  .field-group { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .field-wrap label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--violet); margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .field-wrap input, .field-wrap textarea {
+    width: 100%; border-radius: 10px;
+    border: 2px solid var(--border);
+    padding: 10px 12px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    background: #fff; color: var(--dark); outline: none;
+    transition: border-color 0.15s;
+  }
+  .field-wrap input.error-field {
+    border-color: #CC0000 !important;
+    background: #FFF0F0 !important;
+  }
+  .field-wrap input:focus, .field-wrap textarea:focus {
+    border-color: var(--violet);
+  }
+  .field-wrap textarea { min-height: 70px; resize: vertical; }
+
+  /* ── Bouton envoi ── */
+  .send-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 14px 16px;
+    background: rgba(244,240,246,0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    z-index: 200;
+  }
+  .send-btn {
+    width: 100%; padding: 16px;
+    background: var(--violet);
+    border: none; border-radius: 14px;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 700;
+    color: #fff; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(123,45,139,0.35);
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .send-btn:active { transform: scale(0.97); }
+
+  /* ── Sauvegarde ── */
+.save-bar {
+  display: flex; gap: 8px; padding: 10px 14px 6px;
+  background: var(--white); border-bottom: 1px solid var(--border);
+}
+.save-btn {
+  flex: 1; padding: 9px 8px; border-radius: 10px;
+  border: 2px solid var(--border);
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; text-align: center;
+  background: var(--white); color: var(--violet);
+}
+.save-btn:active { transform: scale(0.97); }
+.save-btn.primary { background: var(--violet); color: #fff; border-color: var(--violet); }
+
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 500;
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: #fff; border-radius: 20px 20px 0 0;
+  width: 100%; max-height: 80vh; overflow-y: auto;
+  padding: 20px 16px 30px;
+}
+.modal-title {
+  font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700;
+  color: var(--violet); margin-bottom: 14px;
+}
+.modal-input {
+  width: 100%; border: 2px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+  margin-bottom: 10px; outline: none;
+}
+.modal-input:focus { border-color: var(--violet); }
+.modal-btn {
+  width: 100%; padding: 13px; border-radius: 10px; border: none;
+  background: var(--violet); color: #fff;
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-bottom: 8px;
+}
+.modal-btn.secondary {
+  background: var(--white); color: var(--violet);
+  border: 2px solid var(--violet);
+}
+.project-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px; border: 1px solid var(--border);
+  border-radius: 10px; margin-bottom: 8px; cursor: pointer;
+  transition: all 0.15s;
+}
+.project-item:active { background: var(--violet-l); }
+.project-name { flex: 1; font-weight: 600; font-size: 14px; }
+.project-date { font-size: 11px; color: var(--grey); }
+.project-del { color: #CC0000; font-size: 18px; padding: 4px 8px; cursor: pointer; }
+.no-projects { text-align: center; color: var(--grey); padding: 20px; font-size: 13px; }
+
+/* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 100px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--dark); color: #fff;
+    padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; opacity: 0;
+    transition: all 0.3s; pointer-events: none;
+    white-space: nowrap; z-index: 300;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px; background: #f8f4fa;
+    border-top: 1px solid var(--border);
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--grey); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* Tabs content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Note */
+  .note {
+    margin: 0 14px 12px;
+    background: #fff8e1; border-left: 3px solid var(--gold);
+    border-radius: 8px; padding: 8px 12px;
+    font-size: 11px; color: #7a5c00; line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header" style="display:flex;align-items:center;gap:14px;padding:10px 18px 10px">
+  <img src="data:image/png;base64,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" alt="A2C" style="height:52px;object-fit:contain;flex-shrink:0">
+  <div>
+    <h1 style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px">A2C — Implantation</h1>
+    <p style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:2px;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase">Atelier de Câblages</p>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab(&#39;info&#39;)">📋 Chantier</button>
+  <button class="tab-btn" onclick="switchTab(&#39;m13&#39;)">13 M</button>
+  <button class="tab-btn" onclick="switchTab(&#39;m18&#39;)">18 M</button>
+</div>
+
+<div class="save-bar">
+  <button class="save-btn primary" onclick="openSave()">💾 Sauvegarder</button>
+  <button class="save-btn" onclick="openLoad()">📂 Charger</button>
+</div>
+
+<!-- Modal Sauvegarder -->
+<div class="modal-overlay" id="modal-save" onclick="closeModal('modal-save')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">💾 Sauvegarder le projet</div>
+    <input class="modal-input" id="save-name" placeholder="Nom du projet (ex: Résidence Les Pins)" maxlength="60">
+    <button class="modal-btn" onclick="saveProject()">Sauvegarder</button>
+    <button class="modal-btn secondary" onclick="closeModal('modal-save')">Annuler</button>
+  </div>
+</div>
+
+<!-- Modal Charger -->
+<div class="modal-overlay" id="modal-load" onclick="closeModal('modal-load')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">📂 Charger un projet</div>
+    <div id="projects-list"></div>
+    <button class="modal-btn secondary" style="margin-top:8px" onclick="closeModal('modal-load')">Fermer</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ── INFOS CHANTIER ── -->
+<div id="tab-info" class="tab-content active">
+  <div class="section-card">
+    <div class="section-title">📋 Informations chantier</div>
+    <div class="field-group">
+      <div class="field-wrap">
+        <label>Nom du chantier / Client</label>
+        <input type="text" id="f-chantier" placeholder="Ex : Résidence Les Pins — Apt 12">
+      </div>
+      <div class="field-wrap">
+        <label>Électricien / Entreprise</label>
+        <input type="text" id="f-electro" placeholder="Nom de l&#39;entreprise">
+      </div>
+      <div class="field-wrap">
+        <label>Contact / Téléphone</label>
+        <input type="tel" id="f-tel" placeholder="06 XX XX XX XX">
+      </div>
+      <div class="field-wrap">
+        <label>Marque</label>
+        <div style="display:flex;gap:10px;margin-top:2px">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--violet-l);border:2px solid transparent;border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s" id="lbl-legrand" style="background:#FDF0F0">
+            <input type="radio" name="marque" value="Legrand" id="r-legrand" style="display:none" onchange="selectMarque(&#39;legrand&#39;)">
+            <div style="width:18px;height:18px;border-radius:50%;border:2px solid #E2000A;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0" id="dot-legrand"></div>
+            <span style="font-size:13px;font-weight:600;color:#E2000A">Legrand</span>
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--violet-l);border:2px solid transparent;border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s" id="lbl-hager" style="background:#EEF2FC">
+            <input type="radio" name="marque" value="Hager" id="r-hager" style="display:none" onchange="selectMarque(&#39;hager&#39;)">
+            <div style="width:18px;height:18px;border-radius:50%;border:2px solid #003DA5;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0" id="dot-hager"></div>
+            <span style="font-size:13px;font-weight:600;color:#003DA5">Hager</span>
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:8px;background:#E8F5E9;border:2px solid transparent;border-radius:10px;padding:10px 12px;cursor:pointer;transition:all .15s" id="lbl-schneider">
+            <input type="radio" name="marque" value="Schneider" id="r-schneider" style="display:none" onchange="selectMarque(&#39;schneider&#39;)">
+            <div style="width:18px;height:18px;border-radius:50%;border:2px solid #1B7A2F;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0" id="dot-schneider"></div>
+            <span style="font-size:13px;font-weight:600;color:#1B7A2F">Schneider</span>
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <div class="field-wrap" style="flex:1">
+          <label>Nombre de rangées <span style="color:#C05000">*</span></label>
+          <select id="f-rangees" style="-webkit-appearance:none;appearance:none;width:100%;border:2px solid var(--border);border-radius:10px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:15px;background:#fff;color:var(--dark)">
+            <option value="" disabled selected>—</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+        <div class="field-wrap" style="flex:1">
+          <label>Nombre de coffrets <span style="color:#C05000">*</span></label>
+          <input type="number" id="f-coffrets" min="1" max="99" placeholder="Ex : 2" style="-webkit-appearance:none;appearance:none;width:100%;border:2px solid var(--border);border-radius:10px;padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:15px;background:#fff;color:var(--dark)">
+        </div>
+      </div>
+      <div class="field-wrap">
+        <label>Observations</label>
+        <textarea id="f-obs" placeholder="Remarques particulières, options spécifiques..."></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    ⚠ Remplissez les infos chantier puis sélectionnez le type de tableau dans la barre en haut.
+    Choisissez le destinataire puis appuyez sur <strong>Envoyer</strong> quand c'est prêt.
+  </div>
+</div>
+
+<!-- ── 13 MODULES ── -->
+<div id="tab-m13" class="tab-content">
+  <div id="blocks-m13"></div>
+</div>
+
+<!-- ── 18 MODULES ── -->
+<div id="tab-m18" class="tab-content">
+  <div id="blocks-m18"></div>
+</div>
+
+<!-- ── T2 ── -->
+
+</div>
+
+<!-- ── T3 2ID ── -->
+
+</div>
+
+<!-- ── T4 3ID ── -->
+
+</div>
+
+<!-- ── T4 4ID ── -->
+
+</div>
+
+</div><!-- /content -->
+
+<div class="send-bar">
+  <div style="display:flex;gap:10px;align-items:stretch">
+    <select id="dest-select" style="flex:0 0 auto;border-radius:12px;border:2px solid var(--violet);padding:0 14px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:var(--violet);background:#fff;outline:none;cursor:pointer;min-width:130px">
+      <option value="" disabled selected>Destinataire…</option>
+      <option value="xavier.fouquet@sasa2c.fr">Xavier Fouquet</option>
+      <option value="guillaume.lamboley@sasa2c.fr">Guillaume Lamboley</option>
+      <option value="mathieu.thoue@sasa2c.fr">Mathieu Thoué</option>
+    </select>
+    <button class="send-btn" onclick="sendMail()" style="flex:1">
+      <span>✉️</span> <span>Envoyer</span>
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Sauvegarde localStorage ──────────────────────────────────────────
+const LS_KEY = 'a2c_implantation_projects';
+
+function getAllProjects() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+}
+
+function saveProject() {
+  const name = document.getElementById('save-name').value.trim();
+  if (!name) { showToast('⚠ Donnez un nom au projet'); return; }
+  const data = collectFormData();
+  const projects = getAllProjects();
+  projects[name] = { data, date: new Date().toLocaleDateString('fr-FR') };
+  localStorage.setItem(LS_KEY, JSON.stringify(projects));
+  closeModal('modal-save');
+  document.getElementById('save-name').value = '';
+  showToast('✅ Projet "' + name + '" sauvegardé');
+}
+
+function openSave() {
+  // Pré-remplir avec le nom du chantier si renseigné
+  const nom = document.getElementById('f-chantier').value.trim();
+  if (nom) document.getElementById('save-name').value = nom;
+  document.getElementById('modal-save').classList.add('open');
+}
+
+function openLoad() {
+  const projects = getAllProjects();
+  const list = document.getElementById('projects-list');
+  const keys = Object.keys(projects);
+  if (!keys.length) {
+    list.innerHTML = '<div class="no-projects">Aucun projet sauvegardé</div>';
+  } else {
+    list.innerHTML = keys.map(name => `
+      <div class="project-item">
+        <div style="flex:1" onclick="loadProject('${name.replace(/'/g, "\'")}')">
+          <div class="project-name">${name}</div>
+          <div class="project-date">📅 ${projects[name].date}</div>
+        </div>
+        <div class="project-del" onclick="deleteProject('${name.replace(/'/g, "\'")}')">🗑</div>
+      </div>`).join('');
+  }
+  document.getElementById('modal-load').classList.add('open');
+}
+
+function loadProject(name) {
+  const projects = getAllProjects();
+  if (!projects[name]) return;
+  restoreFormData(projects[name].data);
+  closeModal('modal-load');
+  showToast('✅ Projet "' + name + '" chargé');
+}
+
+function deleteProject(name) {
+  if (!confirm('Supprimer le projet "' + name + '" ?')) return;
+  const projects = getAllProjects();
+  delete projects[name];
+  localStorage.setItem(LS_KEY, JSON.stringify(projects));
+  openLoad(); // Rafraîchir la liste
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function collectFormData() {
+  const data = {};
+  // Infos chantier
+  data.chantier = document.getElementById('f-chantier').value;
+  data.electro   = document.getElementById('f-electro').value;
+  data.tel        = document.getElementById('f-tel').value;
+  data.obs        = document.getElementById('f-obs').value;
+  data.coffrets   = document.getElementById('f-coffrets').value;
+  // Marque
+  const m = document.querySelector('input[name="marque"]:checked');
+  data.marque = m ? m.value : '';
+  // Rangées
+  data.rangees = null;
+  for (let i = 1; i <= 4; i++) {
+    const btn = document.getElementById('rng-' + i);
+    if (btn && btn.dataset.selected === 'true') { data.rangees = i; break; }
+  }
+  // Onglets inter diff
+  data.tabs = {};
+  ['m13','m18'].forEach(tabId => {
+    const container = document.getElementById('blocks-' + tabId);
+    if (!container || !container.dataset.built) return;
+    const cfg = TABS[tabId];
+    const tabData = { interDiff: [], departs: [] };
+    for (let r = 0; r < cfg.rows; r++) {
+      const sel = document.getElementById('inter-' + tabId + '-' + r);
+      tabData.interDiff.push(sel ? sel.value : '');
+      const rowDeparts = [];
+      for (let d = 0; d < cfg.nb; d++) {
+        const cal = document.getElementById('cal-' + tabId + '-' + r + '-' + d);
+        const usg = document.getElementById('usg-' + tabId + '-' + r + '-' + d);
+        rowDeparts.push({ cal: cal ? cal.value : '', usg: usg ? usg.value : '' });
+      }
+      tabData.departs.push(rowDeparts);
+    }
+    data.tabs[tabId] = tabData;
+  });
+  // Options cochées par onglet
+  data.options = {};
+  ['m13','m18'].forEach(tabId => {
+    const container = document.getElementById('blocks-' + tabId);
+    if (!container || !container.dataset.built) return;
+    data.options[tabId] = [];
+    container.querySelectorAll('.opt-item.checked .opt-label').forEach(l => {
+      data.options[tabId].push(l.textContent);
+    });
+  });
+  return data;
+}
+
+function restoreFormData(data) {
+  if (!data) return;
+  // Infos chantier
+  if (data.chantier !== undefined) document.getElementById('f-chantier').value = data.chantier;
+  if (data.electro  !== undefined) document.getElementById('f-electro').value  = data.electro;
+  if (data.tel      !== undefined) document.getElementById('f-tel').value       = data.tel;
+  if (data.obs      !== undefined) document.getElementById('f-obs').value       = data.obs;
+  if (data.coffrets !== undefined) document.getElementById('f-coffrets').value  = data.coffrets;
+  // Marque
+  if (data.marque) selectMarque(data.marque.toLowerCase());
+  // Rangées
+  if (data.rangees) selectRangees(data.rangees);
+  // Onglets — on switche sur l'onglet concerné pour forcer le build
+  if (data.tabs) {
+    Object.keys(data.tabs).forEach(tabId => {
+      // Forcer la construction de l'onglet
+      if (TABS[tabId]) buildTab(tabId);
+      const tabData = data.tabs[tabId];
+      const cfg = TABS[tabId];
+      if (!cfg) return;
+      setTimeout(() => {
+        for (let r = 0; r < cfg.rows; r++) {
+          const sel = document.getElementById('inter-' + tabId + '-' + r);
+          if (sel && tabData.interDiff[r]) {
+            sel.value = tabData.interDiff[r];
+            updateInterColor(tabId, r, tabData.interDiff[r]);
+            updatePCTMod(tabId);
+          }
+          if (tabData.departs[r]) {
+            tabData.departs[r].forEach((d, di) => {
+              const cal = document.getElementById('cal-' + tabId + '-' + r + '-' + di);
+              const usg = document.getElementById('usg-' + tabId + '-' + r + '-' + di);
+              if (cal && d.cal) { cal.value = d.cal; updateCalColor(cal); }
+              if (usg && d.usg) { usg.value = d.usg; }
+            });
+          }
+        }
+        // Options
+        if (data.options && data.options[tabId]) {
+          const container = document.getElementById('blocks-' + tabId);
+          if (container) {
+            container.querySelectorAll('.opt-item').forEach(item => {
+              const label = item.querySelector('.opt-label');
+              if (label && data.options[tabId].includes(label.textContent)) {
+                item.classList.add('checked');
+              }
+            });
+            updatePCTMod(tabId);
+          }
+        }
+      }, 100);
+    });
+  }
+}
+
+// ── Config ───────────────────────────────────────────────────────────────
+const DESTINATAIRES = [
+  { nom: "Xavier Fouquet",     email: "xavier.fouquet@sasa2c.fr" },
+  { nom: "Guillaume Lamboley", email: "guillaume.lamboley@sasa2c.fr" },
+  { nom: "Mathieu Thoué",      email: "mathieu.thoue@sasa2c.fr" },
+];
+const CALIBRES = ["", "2A", "10A", "16A", "20A", "32A", "TL", "CT J/N"];
+const INTER_CHOICES = ["40A type AC", "40A type A", "63A type AC", "63A type A"];
+
+// Données des onglets
+const TABS = {
+  m13: { label: "13 MODULES", nb: 11, rows: 4, prefilled: [] },
+  m18: { label: "18 MODULES", nb: 16, rows: 4, prefilled: [] },
+};
+
+// ── Génération des blocs ────────────────────────────────────────────────
+function buildTab(tabId) {
+  const cfg = TABS[tabId];
+  const container = document.getElementById(`blocks-${tabId}`);
+  if (container.dataset.built) return;
+  container.dataset.built = "1";
+
+  // Options platine + tableau
+  const platineOpts = ["2X15/45A 500MAS","2X30/60A 500MA S","4X10/30 500MA S","4X30/60 500MA S","PLATINE SANS CPT"];
+  const tableauOpts = ["PORTE","BAC","TRAPPE","PORTE BAC","COFFRET COM","GTL","CORNET"];
+  const igOpts = ["Inter général","Horloge astro","Eco compteur","Répartiteur TV","Parafoudre"];
+  const pctOpts = ["PCT Modulaire 1","PCT Modulaire 2"];
+  const autresOpts = [];
+
+  // Card options
+  const cardOpts = document.createElement('div');
+  cardOpts.className = 'section-card';
+  cardOpts.innerHTML = `
+    <div class="section-title">🔧 Options tableau <span class="badge">${cfg.label}</span></div>
+    <div style="padding:10px 12px 4px;font-size:11px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.5px">Platine EDF</div>
+    <div class="options-grid" id="platine-${tabId}"></div>
+    <div style="padding:4px 12px 4px;font-size:11px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.5px">Tableau</div>
+    <div class="options-grid" id="tableau-${tabId}"></div>
+    <div style="padding:4px 12px 4px;font-size:11px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.5px">Inter général & options</div>
+    <div class="options-grid" id="ig-${tabId}"></div>
+    <div style="height:10px"></div>
+  `;
+  container.appendChild(cardOpts);
+
+  [["platine", platineOpts], ["tableau", tableauOpts], ["ig", igOpts]].forEach(([key, opts]) => {
+    const grid = document.getElementById(`${key}-${tabId}`);
+    opts.forEach(opt => {
+      const item = document.createElement('label');
+      item.className = 'opt-item';
+      item.innerHTML = `<div class="checkmark"></div><span class="opt-label">${opt}</span>`;
+      item.addEventListener('click', () => {
+        item.classList.toggle('checked');
+        if (opt === 'PCT Modulaire 1' || opt === 'PCT Modulaire 2') {
+          updatePCTMod(tabId);
+        }
+      });
+      grid.appendChild(item);
+    });
+  });
+
+  // Ligne PCT dédiée — toujours côte à côte sur une même ligne
+  const pctRow = document.createElement('div');
+  pctRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 12px;';
+  pctRow.id = `pct-row-${tabId}`;
+  pctOpts.forEach(opt => {
+    const item = document.createElement('label');
+    item.className = 'opt-item';
+    item.innerHTML = `<div class="checkmark"></div><span class="opt-label">${opt}</span>`;
+    item.addEventListener('click', () => {
+      item.classList.toggle('checked');
+      updatePCTMod(tabId);
+    });
+    pctRow.appendChild(item);
+  });
+  cardOpts.appendChild(pctRow);
+
+  // Card INTER DIFF
+  const cardID = document.createElement('div');
+  cardID.className = 'section-card';
+  cardID.innerHTML = `<div class="section-title">⚡ Inter-différentiels & départs</div>`;
+  container.appendChild(cardID);
+
+  const nb = cfg.nb;
+  const rows = cfg.rows;
+  const prefilled = cfg.prefilled;
+
+  for (let r = 0; r < rows; r++) {
+    const pre = prefilled[r] || null;
+    const isFree = !pre;
+    const defaultInter = pre ? pre.inter : "";
+
+    const block = document.createElement('div');
+    block.className = isFree ? 'interdiff-block' : `interdiff-block${pre.typeA ? ' type-a' : ' type-ac'}`;
+    block.id = `block-${tabId}-${r}`;
+
+    // Header avec select
+    const hdr = document.createElement('div');
+    hdr.className = 'interdiff-header';
+    hdr.innerHTML = `<span class="interdiff-label">INTER DIFF ${r+1}</span>`;
+    const sel = document.createElement('select');
+    sel.className = 'interdiff-select';
+    sel.id = `inter-${tabId}-${r}`;
+    if (isFree) {
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = ""; emptyOpt.textContent = "— choisir —";
+      sel.appendChild(emptyOpt);
+    }
+    INTER_CHOICES.forEach(ch => {
+      const opt = document.createElement('option');
+      opt.value = ch; opt.textContent = ch;
+      if (ch === defaultInter) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!isFree) {
+      sel.disabled = true;
+      sel.style.opacity = '1';
+      sel.style.cursor = 'default';
+      sel.style.background = 'rgba(255,255,255,0.15)';
+      sel.style.border = '1px solid rgba(255,255,255,0.2)';
+      sel.style.pointerEvents = 'none';
+    }
+    sel.addEventListener('change', () => {
+      updateInterColor(tabId, r, sel.value);
+      updatePCTMod(tabId);
+    });
+    hdr.appendChild(sel);
+    block.appendChild(hdr);
+
+    // Grille départs
+    const grid = document.createElement('div');
+    grid.className = 'departs-grid';
+
+    for (let d = 0; d < nb; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'depart-cell';
+      cell.id = `depart-cell-${tabId}-${r}-${d}`;
+
+      const num = document.createElement('div');
+      num.className = 'depart-num';
+      num.textContent = `D${d+1}`;
+
+      // Calibre
+      const selCal = document.createElement('select');
+      selCal.className = 'depart-calibre';
+      selCal.id = `cal-${tabId}-${r}-${d}`;
+      CALIBRES.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c; o.textContent = c || '—';
+        selCal.appendChild(o);
+      });
+
+      const defaultCal = pre && d < pre.calibres.length ? String(pre.calibres[d]) + "A" : "";
+      if (defaultCal) {
+        selCal.value = defaultCal;
+        selCal.dataset.default = defaultCal;
+        selCal.classList.add('filled'); // pré-rempli = apparence normale (pas jaune au départ)
+      }
+      selCal.addEventListener('change', () => updateCalColor(selCal));
+
+      // Usage
+      const inp = document.createElement('textarea');
+      inp.className = 'depart-usage';
+      inp.id = `usg-${tabId}-${r}-${d}`;
+      inp.rows = 1;
+      const defaultUsg = pre && d < pre.usages.length ? pre.usages[d] : "";
+      if (defaultUsg) {
+        inp.value = defaultUsg;
+        inp.dataset.default = defaultUsg;
+      }
+      inp.addEventListener('input', () => {
+        const changed = inp.dataset.default ? inp.value !== inp.dataset.default : inp.value !== "";
+        inp.classList.toggle('filled', changed);
+      });
+
+      cell.appendChild(num);
+      cell.appendChild(selCal);
+      cell.appendChild(inp);
+      grid.appendChild(cell);
+    }
+
+    block.appendChild(grid);
+
+    // Légende
+    const leg = document.createElement('div');
+    leg.className = 'legend';
+    leg.innerHTML = `
+      <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> Modifié</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--blue-cal)"></div> Standard</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange);opacity:.7"></div> Type A</div>
+    `;
+    block.appendChild(leg);
+    cardID.appendChild(block);
+
+    if (r < rows - 1) {
+      const sep = document.createElement('div');
+      sep.className = 'sep';
+      cardID.appendChild(sep);
+    }
+
+    // Init couleur inter (seulement si pré-rempli)
+    if (defaultInter) updateInterColor(tabId, r, defaultInter);
+  }
+
+  // Appliquer PCT MOD si déjà coché avant ouverture de l'onglet
+  setTimeout(() => updatePCTMod(tabId), 50);
+}
+
+function updateInterColor(tabId, r, val) {
+  const block = document.getElementById(`block-${tabId}-${r}`);
+  if (!block) return;
+  const isA  = val === "40A type A" || val === "63A type A";
+  const isAC = val === "40A type AC" || val === "63A type AC";
+  block.classList.toggle('type-a',  isA);
+  block.classList.toggle('type-ac', isAC);
+}
+
+function updateCalColor(sel) {
+  const val = sel.value;
+  const def = sel.dataset.default;
+  if (def) {
+    // Pré-rempli : jaune si différent du défaut
+    sel.classList.toggle('modified', val !== def && val !== "");
+    sel.classList.toggle('filled', val !== "");
+  } else {
+    // Case vide : jaune si renseignée
+    sel.classList.toggle('filled', val !== "");
+  }
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────
+function updatePCTMod(tabId) {
+  const cfg = TABS[tabId];
+  if (!cfg) return;
+
+  const container = document.getElementById('blocks-' + tabId);
+  if (!container || !container.dataset.built) return;
+
+  // Compter les PCT MOD cochés
+  const checked = container.querySelectorAll('.opt-item.checked .opt-label');
+  let pctCount = 0;
+  checked.forEach(l => { if (l.textContent === 'PCT Modulaire 1' || l.textContent === 'PCT Modulaire 2') pctCount++; });
+
+  // Trouver la dernière ligne avec un inter diff sélectionné
+  let lastSelectedRow = -1;
+  for (let r = 0; r < cfg.rows; r++) {
+    const interSel = document.getElementById('inter-' + tabId + '-' + r);
+    if (interSel && interSel.value && interSel.value !== '') {
+      lastSelectedRow = r;
+    }
+  }
+  if (lastSelectedRow === -1) return;
+
+  // Définir les paires de colonnes selon le tabId
+  // index 0-based : D1=0, D8=7, D9=8, D10=9, D11=10, D13=12, D14=13, D15=14, D16=15
+  let pairs;
+  if (tabId === 'm18') {
+    pairs = [[14, 15], [12, 13]]; // D15+D16, D13+D14
+  } else {
+    pairs = [[9, 10], [7, 8]]; // D10+D11, D8+D9
+  }
+
+  // Réinitialiser toutes les lignes sur toutes les cases concernées
+  for (let r = 0; r < cfg.rows; r++) {
+    const allPairs = tabId === 'm18'
+      ? [[14,15],[12,13]]
+      : [[9,10],[7,8]];
+    for (const [d1, d2] of allPairs) {
+      resetPCT(tabId, r, d1, d2);
+    }
+  }
+
+  // Appliquer sur la dernière ligne sélectionnée
+  if (pctCount >= 1) applyPCT(tabId, lastSelectedRow, pairs[0][0], pairs[0][1]);
+  if (pctCount >= 2) applyPCT(tabId, lastSelectedRow, pairs[1][0], pairs[1][1]);
+}
+
+function applyPCT(tabId, r, d1, d2) {
+  const cell1 = document.getElementById('depart-cell-' + tabId + '-' + r + '-' + d1);
+  const cell2 = document.getElementById('depart-cell-' + tabId + '-' + r + '-' + d2);
+  const cal1  = document.getElementById('cal-' + tabId + '-' + r + '-' + d1);
+  const usg1  = document.getElementById('usg-' + tabId + '-' + r + '-' + d1);
+  if (!cell1 || !cell2 || !cal1) return;
+
+  cell2.style.display = 'none';
+  cell1.style.gridColumn = 'span 2';
+  cal1.style.display = 'none';
+  if (usg1) usg1.style.display = 'none';
+
+  let pctLabel = cell1.querySelector('.pct-label');
+  if (!pctLabel) {
+    pctLabel = document.createElement('div');
+    pctLabel.className = 'pct-label';
+    pctLabel.style.cssText = 'background:var(--violet);color:#fff;font-weight:700;font-size:15px;border-radius:8px;height:40px;display:flex;align-items:center;justify-content:center;letter-spacing:2px;border:2px solid var(--violet-d)';
+    pctLabel.textContent = 'PCT';
+    cell1.appendChild(pctLabel);
+  }
+  pctLabel.style.display = 'flex';
+}
+
+function resetPCT(tabId, r, d1, d2) {
+  const cell1 = document.getElementById('depart-cell-' + tabId + '-' + r + '-' + d1);
+  const cell2 = document.getElementById('depart-cell-' + tabId + '-' + r + '-' + d2);
+  const cal1  = document.getElementById('cal-' + tabId + '-' + r + '-' + d1);
+  const usg1  = document.getElementById('usg-' + tabId + '-' + r + '-' + d1);
+  if (!cell1) return;
+  cell1.style.gridColumn = '';
+  if (cell2) cell2.style.display = '';
+  if (cal1) cal1.style.display = '';
+  if (usg1) usg1.style.display = '';
+  const pctLabel = cell1.querySelector('.pct-label');
+  if (pctLabel) pctLabel.style.display = 'none';
+}
+
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${id}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (TABS[id]) buildTab(id);
+}
+
+// ── Collecte données ───────────────────────────────────────────────────
+function collectData() {
+  const data = {
+    chantier:  document.getElementById('f-chantier').value || '(non renseigné)',
+    marque:    document.querySelector('input[name="marque"]:checked')?.value || '(non renseigné)',
+    electro:   document.getElementById('f-electro').value || '(non renseigné)',
+    tel:       document.getElementById('f-tel').value || '(non renseigné)',
+    rangees:   document.getElementById('f-rangees').value || '(non renseigné)',
+    coffrets:  document.getElementById('f-coffrets').value || '(non renseigné)',
+    obs:       document.getElementById('f-obs').value || '',
+    tabs: {}
+  };
+
+  Object.keys(TABS).forEach(tabId => {
+    const container = document.getElementById(`blocks-${tabId}`);
+    // Seulement les onglets visités par l'utilisateur
+    if (!container.dataset.built) return;
+
+    const cfg = TABS[tabId];
+    const tabData = { label: cfg.label, rows: [] };
+
+    // Options cochées
+    const checked = [];
+    container.querySelectorAll('.opt-item.checked .opt-label').forEach(l => checked.push(l.textContent));
+    tabData.options = checked;
+
+    for (let r = 0; r < cfg.rows; r++) {
+      const interSel = document.getElementById(`inter-${tabId}-${r}`);
+      if (!interSel) continue;
+      const row = { inter: interSel.value, departs: [] };
+      for (let d = 0; d < cfg.nb; d++) {
+        const calEl = document.getElementById(`cal-${tabId}-${r}-${d}`);
+        const usgEl = document.getElementById(`usg-${tabId}-${r}-${d}`);
+        if (!calEl) continue;
+        // Lire valeur affichée + fallback dataset.default si select mal initialisé
+        const calVal = calEl.value || calEl.dataset.default || '';
+        const usgVal = (usgEl && usgEl.value) || (usgEl && usgEl.dataset.default) || '';
+        if (calVal || usgVal) {
+          row.departs.push({ num: d+1, cal: calVal, usg: usgVal,
+            modified: calEl.classList.contains('modified') });
+        }
+      }
+      // Détecter si une PCT est active sur cette ligne et l'ajouter en fin de liste
+      const pctPairs = tabId === 'm18' ? [[14,15],[12,13]] : [[9,10],[7,8]];
+      for (const [d1, d2] of pctPairs) {
+        const cell1 = document.getElementById(`depart-cell-${tabId}-${r}-${d1}`);
+        const pctLabel = cell1 && cell1.querySelector('.pct-label');
+        if (pctLabel && pctLabel.style.display !== 'none' && pctLabel.textContent === 'PCT') {
+          row.departs.push({ num: `${d1+1}-${d2+1}`, cal: 'PCT', usg: '', modified: false });
+        }
+      }
+      tabData.rows.push(row);
+    }
+    data.tabs[tabId] = tabData;
+  });
+
+  return data;
+}
+
+// ── Génération HTML mail ────────────────────────────────────────────────
+function buildMailBody(data) {
+  let html = `<h2 style="font-family:Arial;color:#7B2D8B">⚡ A2C — Demande de chiffrage implantation</h2>`;
+  html += `<table style="font-family:Arial;font-size:13px;border-collapse:collapse;margin-bottom:16px">`;
+  html += `<tr><td style="padding:4px 12px 4px 0;color:#888;font-size:11px">CHANTIER</td><td style="font-weight:600">${data.chantier}</td></tr>`;
+  html += `<tr><td style="padding:4px 12px 4px 0;color:#888;font-size:11px">MARQUE</td><td style="font-weight:600">${data.marque}</td></tr>`;
+  html += `<tr><td style="padding:4px 12px 4px 0;color:#888;font-size:11px">ÉLECTRICIEN</td><td style="font-weight:600">${data.electro}</td></tr>`;
+  html += `<tr><td style="padding:4px 12px 4px 0;color:#888;font-size:11px">TÉLÉPHONE</td><td>${data.tel}</td></tr>`;
+  html += `<tr><td style="padding:4px 12px 4px 0;color:#888;font-size:11px">NB RANGÉES</td><td style="font-weight:600">${data.rangees}</td></tr>`;
+  html += `<tr><td style="padding:4px 12px 4px 0;color:#888;font-size:11px">NB COFFRETS</td><td style="font-weight:600">${data.coffrets}</td></tr>`;
+  if (data.obs) html += `<tr><td style="padding:4px 12px 4px 0;color:#888;font-size:11px">OBSERVATIONS</td><td>${data.obs}</td></tr>`;
+  html += `</table>`;
+
+  Object.values(data.tabs).forEach(tab => {
+    if (!tab.rows.length) return;
+    html += `<h3 style="font-family:Arial;color:#7B2D8B;margin-top:20px;border-bottom:2px solid #7B2D8B;padding-bottom:6px">${tab.label}</h3>`;
+
+    if (tab.options && tab.options.length) {
+      html += `<p style="font-family:Arial;font-size:12px;color:#555;margin:6px 0">Options : ${tab.options.join(' · ')}</p>`;
+    }
+
+    tab.rows.forEach((row, i) => {
+      if (!row.departs.length) return;
+      const isA = row.inter === "40A type A" || row.inter === "63A type A";
+      const bgInter = isA ? '#C05000' : '#2E75B6';
+      html += `<table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-family:Arial;font-size:12px">`;
+      html += `<tr><td colspan="99" style="background:${bgInter};color:#fff;font-weight:700;padding:6px 10px;border-radius:6px 6px 0 0">`;
+      html += `INTER DIFF ${i+1} — ${row.inter}</td></tr>`;
+      html += `<tr style="background:#deeaf1">`;
+      row.departs.forEach(d => {
+        if (d.cal === 'PCT') {
+          html += `<td colspan="2" style="padding:4px 8px;text-align:center;font-weight:700;border:1px solid #ccc;background:#7B2D8B;color:#fff;letter-spacing:2px">PCT</td>`;
+        } else {
+          html += `<td style="padding:4px 8px;text-align:center;font-weight:700;border:1px solid #ccc;${d.modified ? 'background:#FFE066' : ''}">D${d.num}<br>${d.cal}</td>`;
+        }
+      });
+      html += `</tr><tr style="background:#ebf3fb">`;
+      row.departs.forEach(d => {
+        if (d.cal === 'PCT') return;
+        html += `<td style="padding:4px 8px;text-align:center;font-size:10px;border:1px solid #ccc;color:#555">${d.usg || '—'}</td>`;
+      });
+      html += `</tr></table>`;
+    });
+  });
+
+  html += `<hr style="margin-top:24px;border:1px solid #eee">`;
+  html += `<p style="font-family:Arial;font-size:11px;color:#aaa">Envoyé via A2C Implantation App</p>`;
+  return html;
+}
+
+// ── Envoi mail ─────────────────────────────────────────────────────────
+function sendMail() {
+  const data = collectData();
+
+  // Validation bloquante
+  const nomEl = document.getElementById('f-chantier');
+  const marque = document.querySelector('input[name="marque"]:checked');
+
+  let erreur = '';
+  if (!data.chantier || data.chantier === '(non renseigné)') {
+    erreur = '⚠ Le nom du chantier est obligatoire.';
+    nomEl.classList.add('error-field');
+    nomEl.focus();
+  } else if (!marque) {
+    erreur = '⚠ Veuillez sélectionner une marque (Legrand ou Hager).';
+  }
+
+  if (erreur) {
+    showToast(erreur);
+    return;
+  }
+
+  // Reset style erreur
+  nomEl.classList.remove('error-field');
+
+  const subject = `A2C Implantation — ${data.chantier}`;
+
+  // Version texte pour mailto (les clients mail n'acceptent pas le HTML dans mailto)
+  let body = `DEMANDE DE CHIFFRAGE — A2C IMPLANTATION\n`;
+  body += `${'─'.repeat(40)}\n`;
+  body += `Chantier : ${data.chantier}\n`;
+  body += `Marque : ${data.marque}\n`;
+  body += `Électricien : ${data.electro}\n`;
+  body += `Tél : ${data.tel}\n`;
+  body += `Nb rangées : ${data.rangees}\n`;
+  body += `Nb coffrets : ${data.coffrets}\n`;
+  if (data.obs) body += `Observations : ${data.obs}\n`;
+  body += `\n`;
+
+  Object.values(data.tabs).forEach(tab => {
+    if (!tab.rows.length) return;
+    body += `\n== ${tab.label} ==\n`;
+    if (tab.options && tab.options.length) body += `Options : ${tab.options.join(' · ')}\n`;
+    tab.rows.forEach((row, i) => {
+      if (!row.departs.length) return;
+      body += `\nINTER DIFF ${i+1} : ${row.inter}\n`;
+      row.departs.forEach(d => {
+        if (d.cal === 'PCT') {
+          body += `  [ PCT ]\n`;
+        } else {
+          const mod = d.modified ? ' ★' : '';
+          body += `  D${d.num} — ${d.cal}${d.usg ? ' — ' + d.usg : ''}${mod}\n`;
+        }
+      });
+    });
+  });
+
+  body += `\n──\nEnvoyé via A2C Implantation App`;
+
+  const destEl = document.getElementById('dest-select');
+  const dest = destEl ? destEl.value : '';
+  if (!dest) {
+    showToast("⚠ Veuillez choisir un destinataire.");
+    if (destEl) destEl.focus();
+    return;
+  }
+  const destNom = destEl.options[destEl.selectedIndex].text;
+
+  const rangeesEl = document.getElementById('f-rangees');
+  const coffretsEl = document.getElementById('f-coffrets');
+  if (!rangeesEl.value) {
+    showToast("⚠ Veuillez indiquer le nombre de rangées.");
+    rangeesEl.focus();
+    return;
+  }
+  if (!coffretsEl.value || parseInt(coffretsEl.value) < 1) {
+    showToast("⚠ Veuillez indiquer le nombre de coffrets.");
+    coffretsEl.focus();
+    return;
+  }
+
+  const mailto = `mailto:${dest}?bcc=laurent.mendez.pro%40outlook.fr&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
+
+  showToast(`✅ Ouverture messagerie → ${destNom}`);
+}
+
+function selectMarque(m) {
+  ['legrand','hager','schneider'].forEach(id => {
+    const lbl = document.getElementById('lbl-' + id);
+    const dot = document.getElementById('dot-' + id);
+    const active = id === m;
+    const cmap = {legrand:{border:'#E2000A',bg:'#FACCCE',dot:'#E2000A',def:'#FDF0F0'},hager:{border:'#003DA5',bg:'#C5D5F5',dot:'#003DA5',def:'#EEF2FC'},schneider:{border:'#1B7A2F',bg:'#C8E6C9',dot:'#1B7A2F',def:'#E8F5E9'}};
+    const c = cmap[id] || cmap.legrand;
+    lbl.style.borderColor = active ? c.border : 'transparent';
+    lbl.style.background  = active ? c.bg : c.def;
+    dot.innerHTML = active ? '<div style="width:10px;height:10px;border-radius:50%;background:' + c.dot + '"></div>' : '';
+    document.getElementById('r-' + id).checked = active;
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+
+
+</body></html>
+
